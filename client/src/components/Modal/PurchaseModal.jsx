@@ -13,7 +13,8 @@ import Button from '../Shared/Button/Button'
 import useAuth from '../../hooks/useAuth'
 import { toast } from 'react-hot-toast';
 import useAxiosSecure from '../../hooks/useAxiosSecure';
-import { use } from 'react';
+
+import { useNavigate } from 'react-router-dom';
 
 
 
@@ -21,12 +22,12 @@ import { use } from 'react';
 
 
 
-const PurchaseModal = ({ closeModal, isOpen , plant ,  }) => {
+const PurchaseModal = ({ closeModal, isOpen , plant , refetch }) => {
   const { user } = useAuth() 
   const axiosSecoure = useAxiosSecure()
 
-
-  const { category , _id ,  name , quantity , seller , price } = plant ;
+const navigate = useNavigate() ;
+  const { category , _id ,  name , quantity , seller , price  } = plant ;
   const [totalQuantity , seTotaltQuantity] = useState(1) ;
   const [totaPrice , seTotaltPrice] = useState(price) ;
   const [pusChaseInfo , setPurchasesInfo ] = useState({
@@ -70,7 +71,14 @@ console.table(pusChaseInfo)
 // send post request to db 
 try {
 await axiosSecoure.post('/order' , pusChaseInfo)
-toast.success('success full')
+// decreasess quantity from plant collection
+await axiosSecoure.patch(`/plants/quantity/${_id}` , {
+  qauntityToUpate: totalQuantity ,
+  status: 'decreases' , 
+})
+toast.success(' order success full')
+navigate('/dashboard/my-orders')
+refetch()
 }
 catch (err){
 console.log(err)

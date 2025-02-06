@@ -132,12 +132,121 @@ app.get('/plants' ,  async (req , res) =>{
   // save order data in db 
   app.post('/order' ,    async (req , res) =>{
     const orderInfo = req.body 
+    console.log(orderInfo)
     const result = await ordersCollection.insertOne(orderInfo)
     res.send(result)
     })
   
     // Manage plant quantity 
+    app.patch('/plants/quantity/:id' ,            async(req , res) => {
+      const id = req.params.id
+      const {qauntityToUpate , status } = req.body 
+      const filter = {_id : new ObjectId(id)}
+   
+      let updataDoc = {
+        $inc :
+         {quantity :  - qauntityToUpate} ,
+      } 
+
+      if(status === 'increase'){
+       updataDoc = {
+          $inc :
+           {quantity : qauntityToUpate} ,
+        } 
+      }
+      const result =await plantsCollection.updateOne(filter ,  updataDoc)
+      res.send(result)
+    })
+
+    // get all customer orders  by email 
+
+    app.get('/customer-orders/:email' ,            async(req, res) => {
+      const email = req.params.email 
+      const query = {'customer.email' : email}
+    const result =  await ordersCollection.aggregate([
+      {
+        $match: query , // match specific customer data only by email 
+      } ,
+      {
+        $addFields: {
+          plantId: {$toObjectId: '$plantId'} // convert planing string field to objectId field 
+        }
+      } ,
+      {
+        $lookup: {
+          // go to a diffrent collection and look for data 
+          from: 'plants' , // collection name 
+          localField: 'plantId' , // local dasta that you want to match 
+          foreignField: '_id' , // foreign field name of that same data 
+          as: 'plants' , // eturn the data as plants array 
+        }
+      } ,
+
+  {
+    $unwind: '$plants' , // unwind lookup result , return without array 
+  },
+
+{
+  $addFields: {
+    name: '$plants.name' , // add in order object 
+    image: '$plants.image' ,
+    category: '$plants.category' ,
+} ,
+} ,
+
+{
+  $project: {
+    // remove plance object property from order object 
+  plants: 0 ,
+  }
+}
+    ]).toArray()
+      res.send(result) 
+
+    })
+
+
+
+    // manage status and role 
+app.patch('/users/:email' ,       async(req, res ) => {
+  const email = req.params.email 
+  const  query= {email}
+  const user = await usersCollection.findOne(query) 
+  if(!user || user?.status ==='requested') 
+      return res
+    .status(404)
+    .send('you already requested , wait for some time ')
+
+  
+  const updateDoc = {
+    $set: {
+      status: 'requested' ,
+    } ,
+
+  }
+  const result = await usersCollection.updateOne(query , updateDoc) 
+  res.send(result)
+})
     
+
+    // cancel or delete my order 
+    app.delete('/orders/:id' ,             async(req ,res) => {
+      const id = req.params.id 
+      const query = {_id : new ObjectId(id)} 
+      const order = await ordersCollection.findOne(query)
+      if(order.status === 'delivered') return res.status(409).send('Cannot cancel once the product is delivered')
+      const result = await ordersCollection.deleteOne(query) 
+      res.send(result) 
+    })
+
+// get user role 
+app.get('/users/role/:email' , async (req , res)=> {
+  const email = req.params.email ;
+  const result = await usersCollection.findOne({email}) ;
+  res.send({role: result?.role})
+})
+
+
 
 
     // Logout

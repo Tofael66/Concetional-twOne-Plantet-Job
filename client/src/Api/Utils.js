@@ -16,3 +16,19 @@ import axios from "axios"
 
     return image_url 
 }
+
+
+
+
+  export  const saveUserFeomUtility = async (user) => {
+   await axios.post(
+      `${import.meta.env.VITE_API_URL}/users/${user?.email} ` , 
+       {
+names: user?.displayName , 
+images: user?.photoURL ,
+role: 'customer' , 
+email: user?.email 
+      }
+     
+    )
+}
